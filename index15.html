@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sélestat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--red:#c8102e;--gold:#f2b705;--ink:#2a1a1a;--paper:#fffaf0}
+*{box-sizing:border-box}
+body{margin:0;font-family:Georgia,'Times New Roman',serif;background:var(--paper);color:var(--ink);line-height:1.6}
+header{background:var(--red);color:#fff;padding:.8rem 1rem;position:sticky;top:0;z-index:5;border-bottom:4px solid var(--gold)}
+header h1{margin:0;font-size:1.3rem;cursor:pointer}
+nav{display:flex;gap:.4rem;overflow-x:auto;padding-top:.5rem}
+nav a{color:#fff;text-decoration:none;white-space:nowrap;padding:.25rem .7rem;border-radius:20px;font:.85rem system-ui}
+nav a.on,nav a:hover{background:var(--gold);color:var(--ink)}
+main{max-width:820px;margin:0 auto;padding:1.2rem}
+.hero{width:100%;aspect-ratio:16/9;border-radius:14px;object-fit:cover;background:linear-gradient(135deg,var(--red),var(--gold));display:block;margin-bottom:1rem}
+h2{color:var(--red);font-size:1.8rem;margin:.2rem 0 .8rem}
+li{margin:.4rem 0}
+.btn{background:var(--red);color:#fff;border:0;padding:.6rem 1.1rem;border-radius:8px;font:1rem system-ui;cursor:pointer}
+.btn.alt{background:var(--gold);color:var(--ink)}
+input,textarea{width:100%;padding:.6rem;border:2px solid #ddd;border-radius:8px;font:1rem system-ui;margin:.3rem 0}
+.card{background:#fff;border:1px solid #eee;border-radius:12px;padding:1rem;margin:.8rem 0;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font:.8rem system-ui}td,th{border-bottom:1px solid #eee;padding:.3rem;text-align:left}
+/* Intro lion */
+#intro{position:fixed;inset:0;background:var(--red);z-index:99;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff}
+#lion{position:absolute;top:50%;font-size:clamp(5rem,22vw,10rem);transform:translate(-30vw,-50%)}
+#finger{font-size:clamp(3rem,12vw,6rem);opacity:0;position:absolute;top:calc(50% + 14vmin);transition:opacity .3s}
+#skip{position:absolute;bottom:20px;right:20px;opacity:.8}
+#closed,#banned{text-align:center;padding:4rem 1rem}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <div id="lion">🦁</div><div id="finger">🖕</div>
+  <button id="skip" class="btn alt">Passer</button>
+</div>
+
+<header>
+  <h1 onclick="location.hash='#/'">🦁 Sélestat</h1>
+  <nav id="nav"></nav>
+</header>
+<main id="app"></main>
+
+<script>
+/* ====== CONFIG : mets tes valeurs Supabase ====== */
+const SUPABASE_URL = 'https://oqgimvsnbcshohhxknle.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Gf0_VofTVaj_y5GG3RUqGw_r3FO6-3U';
+/* ================================================= */
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s);
+
+/* Remplace les `img` par tes propres photos (URL ou fichiers locaux) */
+const PAGES = [
+ {id:'home',t:'Accueil',img:'img/centre-ville.jpg',b:`<p>Située au cœur de l'Alsace, Sélestat est une ville au patrimoine historique remarquable, riche en traditions, en culture et en découvertes. À travers ce site, nous vous invitons à explorer ses monuments, son histoire, sa gastronomie, sa vie locale et les nombreuses particularités qui font son identité.</p>`},
+ {id:'infos',t:'Infos générales',img:'img/infos.jpg',b:`<ul><li>19 360 habitants, dont Noé.</li><li>Ville de la 5e circonscription du Bas-Rhin.</li><li>Historiquement (et encore) de centre droit.</li><li>Le blason de la ville représente un lion.</li></ul>`},
+ {id:'histoire',t:'Histoire',img:'img/remparts.jpg',b:`<ul><li>Sélestat était connue pour ses remparts et sa fameuse tour.</li><li>La ville a été bombardée par les Allemands en 1870 et en partie incendiée.</li><li>Après le traité de Francfort, l'Allemagne annexe l'Alsace-Moselle.</li><li>La ville redevient française en 1918.</li><li>Emmanuel Macron est passé à Sélestat pendant sa campagne de 2022 (une visite qui s'est mal passée).</li></ul>`},
+ {id:'patrimoine',t:'Patrimoine',img:'img/koenigsbourg.jpg',b:`<h3>Le château du Haut-Kœnigsbourg</h3><ul><li>Château très célèbre d'Alsace, daté du 12e siècle, perché à 750 m d'altitude.</li><li>Restauré avant la Première Guerre mondiale sous Guillaume II, quand l'Alsace était allemande.</li><li>À environ 15 km (23 min hors trafic) de chez Noé. Pass Culture accepté. Beaucoup de visiteurs allemands.</li><li>Un duc de Lorraine en prit possession ; il aurait séjourné au château à Noël.</li></ul><h3>Autres monuments</h3><ul><li>La Bibliothèque humaniste, liée à l'érudit Beatus Rhenanus.</li><li>L'église Saint-Georges, où Noé a fait son baptême et sa communion.</li><li>L'église Notre-Dame-de-la-Paix, où sa confirmation a eu lieu en 2022.</li></ul>`},
+ {id:'scolaire',t:'Vie scolaire',img:'img/ecole.jpg',b:`<ul><li>Collège Beatus Rhenanus, membre du CVC (Conseil de la vie des collégiens).</li><li>Lycée polyvalent Jean-Baptiste-Schwilgué, avec la spécialité NSI.</li><li>Baccalauréat obtenu avec la mention très bien.</li></ul>`},
+ {id:'gastro',t:'Gastronomie',img:'img/tarte-flambee.jpg',b:`<ul><li>La cuisine alsacienne est bonne et variée, mais Noé est partagé.</li><li>Choucroute : moyennement appréciée.</li><li>Tarte flambée : une de ses préférées, même s'il en mange peu.</li><li>Fleischschnacka et Baeckeoffe : pas ses favoris.</li></ul>`},
+ {id:'politique',t:'Vie politique',img:'img/mairie.jpg',b:`<ul><li>Ville historiquement et encore de centre droit.</li><li>Dans la 5e circonscription du 67, Charles Sitzenstuhl (Renaissance), né à Sélestat, a remporté les législatives avec environ 55 % des voix face au candidat RN (44,82 %), soit environ 10 points d'écart.</li></ul>`},
+ {id:'sports',t:'Sports & loisirs',img:'img/handball.jpg',b:`<ul><li>Un grand club de handball en première division, 12e au classement : une fierté locale.</li><li>Noé y a joué trois années consécutives.</li><li>Europa-Park, partenaire du club, est selon Noé le meilleur parc d'Europe.</li></ul>`},
+ {id:'commerces',t:'Commerces',img:'img/commerces.jpg',b:`<ul><li>La ville compte deux McDonald's.</li><li>Noé n'y est jamais allé et n'a pas l'intention d'y aller.</li></ul>`},
+ {id:'noel',t:'Marché de Noël',img:'img/marche-noel.jpg',b:`<ul><li>Marché historique : la première mention d'un sapin de Noël date de 1521, dans la forêt communale. Une première internationale.</li><li>Moins spectaculaire que d'autres villes, mais unique en son genre.</li><li>Du 21 novembre au 10 décembre, environ 300 000 visiteurs : un rendez-vous d'importance nationale.</li></ul>`},
+ {id:'culture',t:'Culture',img:'img/cinema.jpg',b:`<ul><li>Le nouveau cinéma Le Relief a ouvert le 26 novembre 2025 ; Noé y a passé un très bon moment.</li><li>Hakim Jemili, humoriste et acteur franco-tunisien, est né à Sélestat.</li></ul>`},
+];
+
+/* ---------- Identité visiteur ---------- */
+let vid = localStorage.getItem('vid');
+if(!vid){vid = crypto.randomUUID(); localStorage.setItem('vid',vid);}
+const log = (event,page) => sb.from('visits').insert({visitor_id:vid,event,page,user_agent:navigator.userAgent}).then(()=>{});
+
+let settings = {site_open:true,hidden_pages:[]}, overrides = {}, adminPw = null;
+
+async function boot(){
+  try{
+    const [{data:bans},{data:st},{data:ct}] = await Promise.all([
+      sb.from('bans').select('visitor_id').eq('visitor_id',vid),
+      sb.from('settings').select('*'),
+      sb.from('content').select('*')]);
+    if(bans && bans.length){document.body.innerHTML='<div id="banned"><h1>🚫 Accès refusé</h1><p>Vous avez été banni de ce site.</p></div>';return false;}
+    (st||[]).forEach(r=>settings[r.key]=r.value);
+    (ct||[]).forEach(r=>overrides[r.page_id]=r);
+  }catch(e){console.warn(e)}
+  return true;
+}
+
+/* ---------- Animation lion ---------- */
+function intro(){
+  const lion=$('#lion'),f=$('#finger'),box=$('#intro');
+  const end=()=>{box.remove()};
+  $('#skip').onclick=end;
+  const w=innerWidth;
+  const a=lion.animate([
+    {transform:`translate(-30vw,-50%) scaleX(-1)`},
+    {transform:`translate(${w}px,-50%) scaleX(-1)`,offset:.3},   // court très vite vers la droite
+    {transform:`translate(${w}px,-50%) scaleX(1)`,offset:.35},
+    {transform:`translate(-30vw,-50%) scaleX(1)`,offset:.65},    // revient
+    {transform:`translate(${w/2-80}px,-50%) scaleX(1) scale(1.2)`}  // se place au milieu
+  ],{duration:2400,fill:'forwards',easing:'cubic-bezier(.2,.8,.3,1)'});
+  a.onfinish=()=>{f.style.left=(w/2-30)+'px';f.style.opacity=1;setTimeout(end,1800)};
+}
+
+/* ---------- Rendu ---------- */
+function visiblePages(){return PAGES.filter(p=>!(settings.hidden_pages||[]).includes(p.id))}
+function render(){
+  const h=location.hash.replace('#/','')||'home';
+  const nav=$('#nav'),app=$('#app');
+  if(h==='admin') return renderAdmin();
+  if(settings.site_open===false){nav.innerHTML='';app.innerHTML='<div id="closed"><h2>🔒 Site fermé</h2><p>Le site est temporairement fermé aux visiteurs.</p><a href="#/admin">Accès administrateur</a></div>';return;}
+  nav.innerHTML=visiblePages().map(p=>`<a href="#/${p.id==='home'?'':p.id}" class="${p.id===h?'on':''}">${p.t}</a>`).join('')+`<a href="#/admin">🔑</a>`;
+  const p=visiblePages().find(x=>x.id===h);
+  if(!p){app.innerHTML='<h2>Page indisponible</h2><p>Cette page n\'est pas accessible.</p>';return;}
+  const o=overrides[p.id];
+  const title=o?.title||(p.id==='home'?'Bienvenue à Sélestat !':p.t);
+  app.innerHTML=`<img class="hero" src="${p.img}" alt="${p.t}" onerror="this.removeAttribute('src')"><h2>${title}</h2><div>${o?.body||p.b}</div>`;
+  log('view',p.id);
+}
+
+/* ---------- Admin ---------- */
+async function renderAdmin(){
+  const app=$('#app');$('#nav').innerHTML='<a href="#/">← Site</a>';
+  if(!adminPw){
+    app.innerHTML=`<h2>Accès administrateur</h2><input id="pw" type="password" placeholder="Mot de passe"><button class="btn" id="go">Entrer</button><p id="err" style="color:red"></p>`;
+    $('#go').onclick=async()=>{const pw=$('#pw').value;const {data}=await sb.rpc('admin_check',{pw});
+      if(data){adminPw=pw;renderAdmin()}else $('#err').textContent='Mot de passe incorrect.'};
+    return;
+  }
+  const {data:s,error}=await sb.rpc('admin_stats',{pw:adminPw});
+  if(error){adminPw=null;return renderAdmin()}
+  const hidden=settings.hidden_pages||[];
+  app.innerHTML=`<h2>Panneau admin</h2>
+  <div class="card"><b>Statistiques</b><p>Vues : ${s.total} · Visiteurs uniques : ${s.unique} · 24 h : ${s.today}</p>
+   <table><tr><th>Page</th><th>Vues</th></tr>${s.by_page.map(r=>`<tr><td>${r.page}</td><td>${r.n}</td></tr>`).join('')}</table></div>
+  <div class="card"><b>Site</b><p><button class="btn" id="tog">${settings.site_open===false?'Rouvrir':'Fermer'} le site aux visiteurs</button></p>
+   <b>Pages visibles</b>${PAGES.filter(p=>p.id!=='home').map(p=>`<label style="display:block"><input type="checkbox" style="width:auto" data-pg="${p.id}" ${hidden.includes(p.id)?'':'checked'}> ${p.t}</label>`).join('')}</div>
+  <div class="card"><b>Modifier une page</b><select id="ep" style="width:100%;padding:.5rem">${PAGES.map(p=>`<option value="${p.id}">${p.t}</option>`).join('')}</select>
+   <input id="et" placeholder="Titre"><textarea id="eb" rows="6" placeholder="Contenu (HTML)"></textarea><button class="btn" id="save">Enregistrer</button></div>
+  <div class="card"><b>Bannir un visiteur</b><input id="bv" placeholder="ID visiteur (voir journal)"><input id="br" placeholder="Raison"><button class="btn" id="ban">Bannir</button>
+   <table>${s.bans.map(b=>`<tr><td>${b.visitor_id}</td><td>${b.reason||''}</td><td><button data-un="${b.visitor_id}">Débannir</button></td></tr>`).join('')}</table></div>
+  <div class="card"><b>Touches « capture d'écran » détectées</b><p style="font:.8rem system-ui">Le navigateur ne peut détecter que la touche Impr. écran, pas les captures sur téléphone.</p>
+   <table>${s.screens.map(r=>`<tr><td>${r.visitor_id.slice(0,8)}</td><td>${r.page}</td><td>${new Date(r.created_at).toLocaleString('fr')}</td></tr>`).join('')}</table></div>
+  <div class="card"><b>Entrées / sorties récentes</b><table>${s.recent.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('fr')}</td><td>${r.event}</td><td>${r.page||''}</td><td title="${r.visitor_id}">${r.visitor_id}</td></tr>`).join('')}</table></div>
+  <button class="btn alt" id="out">Déconnexion</button>`;
+  const set=async(k,v)=>{await sb.rpc('admin_set_setting',{pw:adminPw,k,v});settings[k]=v;renderAdmin()};
+  $('#tog').onclick=()=>set('site_open',settings.site_open===false);
+  document.querySelectorAll('[data-pg]').forEach(c=>c.onchange=()=>{
+    const h=new Set(settings.hidden_pages||[]);c.checked?h.delete(c.dataset.pg):h.add(c.dataset.pg);set('hidden_pages',[...h])});
+  $('#save').onclick=async()=>{await sb.rpc('admin_set_content',{pw:adminPw,p:$('#ep').value,t:$('#et').value,b:$('#eb').value});
+    overrides[$('#ep').value]={title:$('#et').value,body:$('#eb').value};alert('Enregistré')};
+  $('#ban').onclick=async()=>{await sb.rpc('admin_ban',{pw:adminPw,v:$('#bv').value.trim(),r:$('#br').value});renderAdmin()};
+  document.querySelectorAll('[data-un]').forEach(b=>b.onclick=async()=>{await sb.rpc('admin_unban',{pw:adminPw,v:b.dataset.un});renderAdmin()});
+  $('#out').onclick=()=>{adminPw=null;location.hash='#/'};
+}
+
+/* ---------- Suivi entrées/sorties/captures ---------- */
+addEventListener('keyup',e=>{if(e.key==='PrintScreen')log('screenshot_key',location.hash)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)log('leave',location.hash)});
+addEventListener('hashchange',render);
+
+(async()=>{
+  if(!(await boot()))return;
+  log('enter',location.hash||'#/');
+  if(location.hash.startsWith('#/admin')) $('#intro').remove(); else intro();
+  render();
+})();
+</script>
+</body>
+</html>
